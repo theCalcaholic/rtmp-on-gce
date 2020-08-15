@@ -9,6 +9,8 @@ FROM alpine
 
 COPY --from=builder /opt/build/app /app
 
+EXPOSE 80
+
 ENTRYPOINT [ "" ]
 CMD [ "/app" ]
 

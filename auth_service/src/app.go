@@ -9,18 +9,13 @@ import (
 	"strings"
 )
 
-type Page struct {
-	Title string
-	Body  []byte
-}
-
 var configPath string
 var config = map[string]string{}
 
 func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	pw, err := getConfig(r.URL.Path)
-	if err != nil {
+	if err != nil || pw == "" {
 		//http.Error(w, "no authentication config found for "+r.URL.Path+"!", http.StatusForbidden)
 		fmt.Println("No authentication config found for " + r.URL.Path)
 		fmt.Fprintf(w, "Authorization successful for "+r.URL.Path)
@@ -64,7 +59,7 @@ func main() {
 	fmt.Println("Starting authentication server.")
 	http.HandleFunc("/publish", authHandler)
 	http.HandleFunc("/play", authHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":80", nil))
 
 	fmt.Println("Shutdown...")
 }

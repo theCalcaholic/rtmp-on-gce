@@ -1,0 +1,26 @@
+version: '3.2'
+services:
+  simple-auth:
+    image: thecalcaholic/simple-auth
+    volumes:
+      - "/etc/rtmp-hls-server/publish_secret:/etc/auth_config/publish/password"
+      - "/etc/rtmp-hls-server/play_secret:/etc/auth_config/play/password"
+    restart: unless-stopped
+  rtmp-hls:
+    image: alqutami/rtmp-hls:latest-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "1935:1935"
+    depends_on:
+      - simple-auth
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: letsencrypt
+        target: /etc/letsencrypt
+        read_only: true
+      - "/etc/rtmp-hls-server/nginx.conf:/etc/nginx/nginx.conf"
+
+volumes:
+  letsencrypt:
