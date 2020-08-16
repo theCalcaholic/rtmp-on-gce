@@ -1,0 +1,7 @@
+{
+  "short_name": "wedding-live-stream", 
+  "name": "Hochzeits-Livestream von Jana & Simon Heißwolf",
+  "start_url": "/",
+  "display":      "minimal-ui",
+  "orientation":  "landscape"
+}

@@ -9,24 +9,11 @@ write_files:
     owner: root
     content: |
       [Unit]
-      Description=Start a simple docker container
-
-      [Service]
-      ExecStart=/usr/bin/docker run --rm -p 1935:1935 -p 80:80 -p 443:443 -v /etc/rtmp-hls-server/nginx.conf:/etc/nginx/nginx.conf --name=rtmp-hls-server alqutami/rtmp-hls
-      ExecStop=/usr/bin/docker stop rtmp-hls-server
-      ExecStopPost=/usr/bin/docker rm rtmp-hls-server
-  
-  - path: /etc/systemd/system/rtmp-hls.service
-    permissions: 0644
-    owner: root
-    content: |
-      [Unit]
       Description=Start the rtmp authentication server
 
       [Service]
-      ExecStart=/usr/bin/docker run --rm -p 127.0.0.1:80 -p 80:80 -p 443:443 -v /etc/rtmp-hls-server/nginx.conf:/etc/nginx/nginx.conf --name=rtmp-hls-server alqutami/rtmp-hls
-      ExecStop=/usr/bin/docker stop rtmp-hls-server
-      ExecStopPost=/usr/bin/docker rm rtmp-hls-server
+      ExecStart=/usr/bin/docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /etc/rtmp-hls-server/:/etc/rtmp-hls-server/ -w /etc/rtmp-hls-server/ docker/compose:latest up
+      ExecStop=/usr/bin/docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /etc/rtmp-hls-server/:/etc/rtmp-hls-server/ -w /etc/rtmp-hls-server/ docker/compose:latest down
   - path: /etc/rtmp-hls-server/nginx.conf
     permissions: '0660'
     encoding: b64
@@ -35,11 +22,35 @@ write_files:
     permissions: '0660'
     encoding: b64
     content: {{ filtered_include('docker-compose.yml') | b64encode }}
+  - path: /etc/rtmp-hls-server/player/index.html
+    permissions: '0664'
+    encoding: b64
+    content: {{ filtered_include('player/index.html') | b64encode }}
+  - path: /etc/rtmp-hls-server/player/manifest.webmanifest
+    permissions: '0664'
+    encoding: b64
+    content: {{ filtered_include('player/manifest.webmanifest') | b64encode }}
+  - path: /etc/rtmp-hls-server/.htpasswd
+    permissions: '0660'
+    content: "viewer:$apr1$iSGnjknG$vMVE.YBE1xydDU4sFX2WI1"
 
 runcmd:
-  - 'PUBLiSH_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/password)"'
-  - 'PLAY_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/password)"'
-  - echo "$PUBLISH_PW" > /etc/rtmp-hls-server/publish_secret
-  - echo "$PLAY_PW" > /etc/rtmp-hls-server/play_secret
+  - 'PUBLiSH_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/publish-password)"'
+  - 'PLAY_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/play-password)"'
+  - mkdir -p /etc/rtmp-hls-server/auth_config/publish /etc/rtmp-hls-server/auth_config/play
+  - echo "$PUBLISH_PW" > /etc/rtmp-hls-server/auth_config/publish/password
+  - echo "$PLAY_PW" > /etc/rtmp-hls-server/auth_config/play/password
   - systemctl daemon-reload
   - systemctl start rtmp-hls.service
+  - while ! docker ps | grep rtmp-hls-server_rtmp-hls_1; do sleep 3; done
+  - docker exec rtmp-hls-server_rtmp-hls_1 bash -c "chown nobody:nobody /.htpasswd"
+
+bootcmd:
+  - mkdir -p /mnt/disks/data
+  - |
+    mount -o discard,defaults /dev/disk/by-id/scsi-0Google_PersistentDisk_data /mnt/disks/data || {
+      echo "data disk not formatted! Formatting now..."
+      mkfs.ext4 /dev/disk/by-id/scsi-0Google_PersistentDisk_data
+      mount -o discard,defaults /dev/disk/by-id/scsi-0Google_PersistentDisk_data /mnt/disks/data
+    }
+  

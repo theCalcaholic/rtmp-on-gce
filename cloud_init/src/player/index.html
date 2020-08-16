@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Live Stream</title>
+    <meta charset="UTF-8">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link
+      href="https://unpkg.com/video.js@7/dist/video-js.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- City -->
+    <!-- <link href="https://unpkg.com/@videojs/themes@1/dist/city/index.css" rel="stylesheet"> -->
+    
+    <!-- Fantasy -->
+    <!-- <link href="https://unpkg.com/@videojs/themes@1/dist/fantasy/index.css" rel="stylesheet"> -->
+    
+    <!-- Forest -->
+    <!-- <link href="https://unpkg.com/@videojs/themes@1/dist/forest/index.css" rel="stylesheet"> -->
+    
+    <!-- Sea -->
+    <link href="https://unpkg.com/@videojs/themes@1/dist/sea/index.css" rel="stylesheet">
+    <style type="text/css">
+      #stream {
+        margin: auto;
+      }
+      h1 {
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="display: block;">
+      <h1>Hochzeits-Stream Jana & Simon Heißwolf</h1>
+      <video 
+        id='stream' 
+        class='video-js vjs-theme-sea' 
+        width='720'
+        height='480' 
+        preload=auto 
+        data-setup='{}' 
+        controls>
+        <source
+          src="/hls/test.m3u8"
+          type="application/x-mpegURL">
+        
+        <source
+          src="/dash/test_src.mpd"
+          type="application/dash+xml">
+        <p class="vjs-no-js">
+          To view this video please enable JavaScript, and consider upgrading to a
+          web browser that
+          <a href="https://videojs.com/html5-video-support/" target="_blank"
+            >supports HTML5 video</a
+          >
+        </p>
+      </video>
+    </div>
+    <script>
+      window.HELP_IMPROVE_VIDEOJS = false;
+    </script>
+    <script src="https://vjs.zencdn.net/7.8.4/video.min.js" type="application/javascript"></script>
+  </body>
+</html>
