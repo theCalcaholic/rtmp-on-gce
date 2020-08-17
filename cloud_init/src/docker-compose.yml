@@ -25,6 +25,7 @@ services:
         source: /etc/rtmp-hls-server/.htpasswd
         target: /.htpasswd
       - "/mnt/disks/data/:/mnt/"
+      - "/etc/rtmp-hls-server/scripts:/scripts"
 
 
 volumes:

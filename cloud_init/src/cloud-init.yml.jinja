@@ -23,27 +23,40 @@ write_files:
     encoding: b64
     content: {{ filtered_include('docker-compose.yml') | b64encode }}
   - path: /etc/rtmp-hls-server/player/index.html
-    permissions: '0664'
+    permissions: '0660'
     encoding: b64
     content: {{ filtered_include('player/index.html') | b64encode }}
   - path: /etc/rtmp-hls-server/player/manifest.webmanifest
-    permissions: '0664'
+    permissions: '0660'
     encoding: b64
     content: {{ filtered_include('player/manifest.webmanifest') | b64encode }}
   - path: /etc/rtmp-hls-server/.htpasswd
     permissions: '0660'
     content: "viewer:$apr1$iSGnjknG$vMVE.YBE1xydDU4sFX2WI1"
+  - path: /etc/rtmp-hls-server/scripts/process_recorded.sh
+    permissions: '0775'
+    encoding: b64
+    content: {{ filtered_include('scripts/process_recorded.sh') | b64encode }}
 
 runcmd:
-  - 'PUBLiSH_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/publish-password)"'
-  - 'PLAY_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/play-password)"'
+  - 'ATTRIBUTES="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/)"'
+  - PUBLISH_PW=""
+  - PLAY_PW=""
+  - >
+    echo $ATTRIBUTES | grep 'publish-password' > /dev/null
+    && PUBLiSH_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/publish-password)"
+  - >
+    echo $ATTRIBUTES | grep 'play-password' > /dev/null
+    && PLAY_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/play-password)"
   - mkdir -p /etc/rtmp-hls-server/auth_config/publish /etc/rtmp-hls-server/auth_config/play
   - echo "$PUBLISH_PW" > /etc/rtmp-hls-server/auth_config/publish/password
   - echo "$PLAY_PW" > /etc/rtmp-hls-server/auth_config/play/password
   - systemctl daemon-reload
   - systemctl start rtmp-hls.service
-  - while ! docker ps | grep rtmp-hls-server_rtmp-hls_1; do sleep 3; done
-  - docker exec rtmp-hls-server_rtmp-hls_1 bash -c "chown nobody:nobody /.htpasswd"
+  - while [[ -z "$(docker ps --filter "name=rtmp-hls-server_rtmp-hls_1" --filter "status=running" --format "{{ '{{' }}.ID{{ '}}' }}" 2> /dev/null )" ]]; do sleep 3; done
+  #- docker exec rtmp-hls-server_rtmp-hls_1 bash -c "chown nobody:nobody /.htpasswd"
+  - docker exec rtmp-hls-server_rtmp-hls_1 bash -c "mkdir -p /mnt/record"
+  #- docker exec rtmp-hls-server_rtmp-hls_1 bash -c "chown nobody /mnt/record"
 
 bootcmd:
   - mkdir -p /mnt/disks/data
