@@ -27,6 +27,18 @@
       h1 {
         text-align: center;
       }
+      #firefox-android-warning {
+        border-style: dashed;
+        border-color: red;
+        border-width: 2px;
+        font-size: 1.4em;
+        font-weight: bold;
+        text-align: center;
+        padding: 1em;
+      }
+      .hidden {
+        display: none;;
+      }
     </style>
   </head>
   <body>
@@ -55,9 +67,21 @@
           >
         </p>
       </video>
+      <div id="firefox-android-warning" class="hidden">
+        Bitte nutze den Chrome-Browser, um eine fehlerfreie Wiedergabe zu gewährleisten.
+      </div>
     </div>
     <script>
       window.HELP_IMPROVE_VIDEOJS = false;
+      window.onload = function() {
+        let userAgent = navigator.userAgent.toLowerCase();
+        console.log(userAgent);
+        if( userAgent.indexOf("firefox") != -1 && userAgent.indexOf("android") != -1 ) {
+
+          document.getElementById("stream").classList.add("hidden");
+          document.getElementById("firefox-android-warning").classList.remove("hidden");
+        }
+      };
     </script>
     <script src="https://vjs.zencdn.net/7.8.4/video.min.js" type="application/javascript"></script>
   </body>
