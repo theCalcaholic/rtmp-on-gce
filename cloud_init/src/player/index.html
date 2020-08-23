@@ -60,11 +60,8 @@
           src="/dash/test_src.mpd"
           type="application/dash+xml">
         <p class="vjs-no-js">
-          To view this video please enable JavaScript, and consider upgrading to a
-          web browser that
-          <a href="https://videojs.com/html5-video-support/" target="_blank"
-            >supports HTML5 video</a
-          >
+          To view this video please enable JavaScript, and consider upgrading to a web browser that
+          <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
         </p>
       </video>
       <div id="firefox-android-warning" class="hidden">
@@ -81,6 +78,17 @@
           document.getElementById("stream").classList.add("hidden");
           document.getElementById("firefox-android-warning").classList.remove("hidden");
         }
+
+        let dataSetup = {
+          html5: {
+            nativeAudioTracks: false,
+            nativeVideoTracks: false,
+            hls: {
+              overrideNative: true
+            }
+          }
+        };
+        document.getElementById('stream').setAttribute('data-setup', JSON.stringify(dataSetup));
       };
     </script>
     <script src="https://vjs.zencdn.net/7.8.4/video.min.js" type="application/javascript"></script>
