@@ -3,7 +3,7 @@ services:
   simple-auth:
     image: thecalcaholic/simple-auth
     volumes:
-      - "/etc/rtmp-hls-server/auth_config:/etc/auth_config/"
+      - "/etc/rtmp-hls-server/auth_config:/etc/auth_config"
     restart: unless-stopped
   rtmp-hls:
     image: alqutami/rtmp-hls:latest-alpine

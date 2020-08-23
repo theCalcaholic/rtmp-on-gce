@@ -14,10 +14,14 @@ write_files:
       [Service]
       ExecStart=/usr/bin/docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /etc/rtmp-hls-server/:/etc/rtmp-hls-server/ -w /etc/rtmp-hls-server/ docker/compose:latest up
       ExecStop=/usr/bin/docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /etc/rtmp-hls-server/:/etc/rtmp-hls-server/ -w /etc/rtmp-hls-server/ docker/compose:latest down
-  - path: /etc/rtmp-hls-server/nginx.conf
+  - path: /etc/rtmp-hls-server/nginx_no_ssl.conf
     permissions: '0660'
     encoding: b64
-    content: {{ filtered_include('nginx.conf') | b64encode }}
+    content: {% set enable_ssl=False %}{{ filtered_include('nginx.conf') | b64encode }}
+  - path: /etc/rtmp-hls-server/nginx_ssl.conf
+    permissions: '0660'
+    encoding: b64
+    content: {% set enable_ssl=True %}{{ filtered_include('nginx.conf') | b64encode }}
   - path: /etc/rtmp-hls-server/docker-compose.yml
     permissions: '0660'
     encoding: b64
@@ -39,26 +43,44 @@ write_files:
     content: {{ filtered_include('scripts/process_recorded.sh') | b64encode }}
 
 runcmd:
+  - set -x
+  - systemctl stop rtmp-hls.service || true
   - 'ATTRIBUTES="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/)"'
   - PUBLISH_PW=""
   - PLAY_PW=""
-  - >
-    echo $ATTRIBUTES | grep 'publish-password' > /dev/null
-    && PUBLiSH_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/publish-password)"
-  - >
-    echo $ATTRIBUTES | grep 'play-password' > /dev/null
-    && PLAY_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/play-password)"
+  - |
+    if echo "$ATTRIBUTES" | grep 'publish-password' > /dev/null
+    then
+      PUBLISH_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/publish-password)"
+    fi
+  - |
+    if echo $ATTRIBUTES | grep 'play-password' > /dev/null
+    then
+      PLAY_PW="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/play-password)"
+    fi
   - mkdir -p /etc/rtmp-hls-server/auth_config/publish /etc/rtmp-hls-server/auth_config/play
-  - echo "$PUBLISH_PW" > /etc/rtmp-hls-server/auth_config/publish/password
+  - echo "$PUBLISH_PW" | tee /etc/rtmp-hls-server/auth_config/publish/password
   - echo "$PLAY_PW" > /etc/rtmp-hls-server/auth_config/play/password
   - systemctl daemon-reload
+  - |
+    if echo "$ATTRIBUTES" | grep 'ssl-domain' > /dev/null && echo "$ATTRIBUTES" | grep 'ssl-email' > /dev/null
+    then
+      LETSENCRYPT_EMAIL="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/ssl-email)"
+      LETSENCRYPT_DOMAIN="$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/ssl-domain)"
+      
+      docker run --rm --name certbot -v "/mnt/disks/data/letsencrypt:/etc/letsencrypt" -p 80:80 -p 443:443 certbot/certbot \
+      certonly --agree-tos --standalone -m $LETSENCRYPT_EMAIL -d $LETSENCRYPT_DOMAIN || echo "Certificate does exist and is valid. Nothing to do..."
+      sed -i "s/\[\[SERVER_NAME\]\]/$LETSENCRYPT_DOMAIN/g" /etc/rtmp-hls-server/nginx_ssl.conf
+      cp /etc/rtmp-hls-server/nginx_ssl.conf /etc/rtmp-hls-server/nginx.conf
+    else
+      cp /etc/rtmp-hls-server/nginx_no_ssl.conf /etc/rtmp-hls-server/nginx.conf
+    fi
   - systemctl start rtmp-hls.service
   - while [[ -z "$(docker ps --filter "name=rtmp-hls-server_rtmp-hls_1" --filter "status=running" --format "{{ '{{' }}.ID{{ '}}' }}" 2> /dev/null )" ]]; do sleep 3; done
-  #- docker exec rtmp-hls-server_rtmp-hls_1 bash -c "chown nobody:nobody /.htpasswd"
   - docker exec rtmp-hls-server_rtmp-hls_1 bash -c "mkdir -p /mnt/record"
-  #- docker exec rtmp-hls-server_rtmp-hls_1 bash -c "chown nobody /mnt/record"
 
 bootcmd:
+  - rm -r /etc/rtmp-hls-server
   - mkdir -p /mnt/disks/data
   - |
     mount -o discard,defaults /dev/disk/by-id/scsi-0Google_PersistentDisk_data /mnt/disks/data || {
