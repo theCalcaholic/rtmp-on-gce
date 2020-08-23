@@ -18,19 +18,21 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil || pw == "" {
 		//http.Error(w, "no authentication config found for "+r.URL.Path+"!", http.StatusForbidden)
 		fmt.Println("No authentication config found for " + r.URL.Path)
+		fmt.Println("Authorization successful for " + r.URL.Path)
 		fmt.Fprintf(w, "Authorization successful for "+r.URL.Path)
 		return
 	}
 	pw = strings.Replace(pw, "\n", "", -1)
 
 	r.ParseForm()
-	providedPw := r.PostFormValue("pw")
+	providedPw := r.FormValue("pw")
 
 	if pw == providedPw {
+		fmt.Println("Authorization successful for " + r.URL.Path)
 		fmt.Fprintf(w, "Authorization successful for "+r.URL.Path)
 		return
 	}
-	fmt.Println(pw + " does not equal " + providedPw)
+	fmt.Println("Authorization failed for "+r.URL.Path, http.StatusForbidden)
 	http.Error(w, "Authorization failed for "+r.URL.Path, http.StatusForbidden)
 }
 
